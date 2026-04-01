@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nightlog.ai</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0a1a">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a1a;--surface:#10102a;--surface2:#16163a;--border:#1e1e3e;
+  --text:#c8c8e0;--muted:#6a6a8e;--dim:#3a3a5e;
+  --accent:#7c6aef;--accent2:#5a4acf;--accent-glow:rgba(124,106,239,.25);
+  --gold:#d4a44a;--silver:#8a8ab0;--rose:#cf6a8a;--teal:#4ab0a4;
+  --mono:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;
+  --radius:10px;
+}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Stars background ── */
+.stars{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle var(--dur,3s) ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.2}50%{opacity:.9}}
+
+/* ── Header ── */
+header{position:relative;z-index:2;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.moon{font-size:18px;filter:drop-shadow(0 0 6px var(--accent))}
+header h1{font-size:13px;font-weight:600;letter-spacing:2px;text-transform:lowercase;color:var(--accent)}
+.tab-bar{margin-left:auto;display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:3px}
+.tab{padding:6px 14px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--accent);color:#fff;box-shadow:0 0 12px var(--accent-glow)}
+
+/* ── Main content ── */
+main{position:relative;z-index:1;flex:1;overflow:hidden}
+.panel{display:none;height:100%;overflow-y:auto;padding:20px;scroll-behavior:smooth}
+.panel.active{display:block}
+.panel::-webkit-scrollbar{width:4px}
+.panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── Sleep panel ── */
+.sleep-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.sleep-header h2{font-size:14px;color:var(--text);font-weight:600;letter-spacing:1px}
+.score-ring{width:80px;height:80px;position:relative;display:flex;align-items:center;justify-content:center}
+.score-ring svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
+.score-ring .value{font-size:22px;font-weight:700;color:var(--accent)}
+.score-ring .label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.sleep-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.sleep-form h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:14px}
+.form-row{display:flex;gap:12px;margin-bottom:12px;align-items:center}
+.form-row label{font-size:11px;color:var(--muted);min-width:70px;text-transform:uppercase;letter-spacing:.5px}
+.form-row input,.form-row select,.form-row textarea{flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;outline:none}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent)}
+.quality-slider{-webkit-appearance:none;appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none;flex:1}
+.quality-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px var(--accent-glow)}
+.btn{padding:8px 20px;border-radius:6px;border:none;font-family:var(--mono);font-weight:600;font-size:11px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--text)}
+
+/* ── Sleep history ── */
+.sleep-history{margin-top:20px}
+.sleep-history h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:12px}
+.sleep-entry{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;transition:border-color .15s}
+.sleep-entry:hover{border-color:var(--accent)}
+.sleep-entry .date{font-size:11px;color:var(--muted);min-width:80px}
+.sleep-entry .time{font-size:12px;color:var(--text)}
+.sleep-entry .dur{font-size:11px;color:var(--silver);margin-left:auto}
+.quality-dot{width:8px;height:8px;border-radius:50%}
+.quality-dot.q1{background:#ef4444}.quality-dot.q2{background:#f97316}.quality-dot.q3{background:#eab308}
+.quality-dot.q4{background:#22c55e}.quality-dot.q5{background:#06b6d4}
+
+/* ── Dreams panel ── */
+.dream-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.dream-form h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:14px}
+.dream-form textarea{width:100%;min-height:100px;padding:10px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.6;outline:none;resize:vertical}
+.dream-form textarea:focus{border-color:var(--gold)}
+.mood-pills{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.mood-pill{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--mono);font-size:10px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;transition:all .15s}
+.mood-pill:hover{border-color:var(--gold);color:var(--text)}
+.mood-pill.active{background:var(--gold);color:#000;border-color:var(--gold)}
+.tag-input{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;background:var(--surface2);color:var(--silver);font-size:10px}
+.tag .remove{cursor:pointer;opacity:.6}.tag .remove:hover{opacity:1}
+.dream-entries{margin-top:20px}
+.dream-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px}
+.dream-card .meta{display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.dream-card .content{font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.dream-card .tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.dream-prompts{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px}
+.dream-prompts h4{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.dream-prompts .prompt{font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:color .15s}
+.dream-prompts .prompt:hover{color:var(--text)}
+.dream-prompts .prompt:last-child{border-bottom:none}
+
+/* ── Insights panel ── */
+.insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.insight-card h3{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:10px}
+.insight-card .big{font-size:28px;font-weight:200;color:var(--text)}
+.insight-card .sub{font-size:11px;color:var(--muted);margin-top:4px}
+.insight-card ul{list-style:none;padding:0}
+.insight-card li{font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text);line-height:1.5}
+.insight-card li:last-child{border-bottom:none}
+.pattern-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;margin:2px;text-transform:uppercase;letter-spacing:.5px}
+.pattern-tag.positive{background:rgba(34,197,94,.15);color:#22c55e}
+.pattern-tag.negative{background:rgba(239,68,68,.15);color:#ef4444}
+.pattern-tag.neutral{background:rgba(106,106,142,.15);color:var(--muted)}
+.rec-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text)}
+.rec-item:last-child{border-bottom:none}
+.rec-item::before{content:'→';color:var(--accent);margin-right:6px}
+.bedtime-table{width:100%;font-size:11px}
+.bedtime-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.bedtime-table td:first-child{color:var(--muted)}
+.chart-placeholder{height:120px;background:var(--bg);border-radius:6px;display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:8px;overflow:hidden}
+.chart-bar{width:12px;border-radius:3px 3px 0 0;transition:height .3s ease}
+
+/* ── Chat panel ── */
+#chat-panel{display:flex;flex-direction:column;padding:0}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 20px}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.msg{margin-bottom:12px;max-width:640px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.msg.user{margin-left:auto;text-align:right}
+.msg .role{font-size:9px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px}
+.msg .bubble{padding:10px 14px;border-radius:10px;white-space:pre-wrap;line-height:1.7;font-size:12px;word-break:break-word}
+.msg.user .bubble{background:rgba(124,106,239,.15);border:1px solid rgba(124,106,239,.3);border-bottom-right-radius:2px;display:inline-block;text-align:left}
+.msg.assistant .bubble{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:2px}
+.typing{display:inline-flex;gap:4px;padding:10px 14px}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+.chat-input{padding:12px 20px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-input input{flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;outline:none}
+.chat-input input:focus{border-color:var(--accent)}
+.chat-input input::placeholder{color:var(--muted)}
+.send-btn{padding:10px 18px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:var(--mono);font-weight:600;font-size:11px;cursor:pointer}
+.send-btn:hover{background:var(--accent2)}
+.send-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ── Sound notification ── */
+.hidden{display:none!important}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  .tab{padding:5px 10px;font-size:10px}
+  .form-row{flex-direction:column;align-items:stretch}
+  .form-row label{min-width:auto}
+  .insight-grid{grid-template-columns:1fr}
+  .score-ring{width:60px;height:60px}
+  .score-ring .value{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+
+<header>
+  <span class="moon">☽</span>
+  <h1>nightlog.ai</h1>
+  <div class="tab-bar">
+    <button class="tab active" data-panel="sleep">sleep</button>
+    <button class="tab" data-panel="dreams">dreams</button>
+    <button class="tab" data-panel="insights">insights</button>
+    <button class="tab" data-panel="chat">chat</button>
+  </div>
+</header>
+
+<main>
+  <!-- ═══ SLEEP PANEL ═══ -->
+  <div class="panel active" id="sleep-panel">
+    <div class="sleep-header">
+      <h2>Sleep Tracker</h2>
+      <div class="score-ring" id="score-ring">
+        <svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="4"/>
+        <circle id="score-arc" cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg>
+        <div style="text-align:center"><div class="value" id="score-val">—</div><div class="label">score</div></div>
+      </div>
+    </div>
+
+    <div class="sleep-form">
+      <h3>Log Sleep</h3>
+      <div class="form-row"><label>Date</label><input type="date" id="sleep-date"></div>
+      <div class="form-row"><label>Bedtime</label><input type="time" id="sleep-bed" value="23:00"></div>
+      <div class="form-row"><label>Wake</label><input type="time" id="sleep-wake" value="07:00"></div>
+      <div class="form-row"><label>Quality</label><input type="range" class="quality-slider" id="sleep-quality" min="1" max="5" value="3"><span id="quality-label" style="min-width:40px;text-align:center;font-size:12px;color:var(--accent)">3/5</span></div>
+      <div class="form-row"><label>Notes</label><input type="text" id="sleep-notes" placeholder="caffeine, exercise, stress..."></div>
+      <div style="text-align:right;margin-top:8px"><button class="btn btn-primary" id="log-sleep-btn">Log</button></div>
+    </div>
+
+    <div class="sleep-history">
+      <h3>Recent Sleep</h3>
+      <div id="sleep-entries"></div>
+    </div>
+  </div>
+
+  <!-- ═══ DREAMS PANEL ═══ -->
+  <div class="panel" id="dreams-panel">
+    <div class="dream-prompts" id="dream-prompts-box">
+      <h4>Journal Prompts</h4>
+      <div id="prompts-list"></div>
+    </div>
+
+    <div class="dream-form">
+      <h3>New Dream Entry</h3>
+      <div class="form-row"><label>Date</label><input type="date" id="dream-date"></div>
+      <textarea id="dream-content" placeholder="What did you dream? Write freely..."></textarea>
+      <div style="margin:12px 0">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Mood</label>
+        <div class="mood-pills" id="mood-pills">
+          <button class="mood-pill" data-mood="peaceful">peaceful</button>
+          <button class="mood-pill" data-mood="neutral">neutral</button>
+          <button class="mood-pill" data-mood="anxious">anxious</button>
+          <button class="mood-pill" data-mood="nightmare">nightmare</button>
+          <button class="mood-pill" data-mood="euphoric">euphoric</button>
+          <button class="mood-pill" data-mood="melancholic">melancholic</button>
+          <button class="mood-pill" data-mood="vivid">vivid</button>
+        </div>
+      </div>
+      <div class="form-row"><label>Lucidity</label><input type="range" class="quality-slider" id="dream-lucidity" min="0" max="5" value="0"><span id="lucidity-label" style="min-width:30px;text-align:center;font-size:12px;color:var(--gold)">0</span></div>
+      <div class="form-row"><label>Tags</label><input type="text" id="dream-tags" placeholder="flying, water, chase..."></div>
+      <div style="text-align:right;margin-top:8px"><button class="btn btn-primary" id="save-dream-btn">Save Dream</button></div>
+    </div>
+
+    <div class="dream-entries">
+      <div id="dream-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══ INSIGHTS PANEL ═══ -->
+  <div class="panel" id="insights-panel">
+    <div class="insight-grid" id="insight-grid">
+      <div class="insight-card" id="ins-score"><h3>Sleep Score</h3><div class="big">—</div><div class="sub">log sleep to see your score</div></div>
+      <div class="insight-card" id="ins-debt"><h3>Sleep Debt</h3><div class="big">—</div><div class="sub">cumulative over 7 days</div></div>
+      <div class="insight-card" id="ins-chrono"><h3>Chronotype</h3><div class="big">—</div><div class="sub">based on bedtime patterns</div></div>
+      <div class="insight-card" id="ins-quality-chart"><h3>Quality Trend</h3><div class="chart-placeholder" id="quality-chart"></div></div>
+    </div>
+    <div class="insight-grid">
+      <div class="insight-card" id="ins-patterns"><h3>Detected Patterns</h3><div class="sub" id="patterns-list">log at least 3 nights for pattern detection</div></div>
+      <div class="insight-card" id="ins-recs"><h3>Recommendations</h3><div id="recs-list"><div class="sub">start logging for personalized tips</div></div></div>
+    </div>
+    <div class="insight-grid">
+      <div class="insight-card" id="ins-bedtimes"><h3>Optimal Bedtimes</h3><table class="bedtime-table" id="bedtime-table"><tr><td colspan="2" style="color:var(--muted)">log a wake time first</td></tr></table></div>
+      <div class="insight-card" id="ins-dream-themes"><h3>Dream Themes</h3><div id="themes-list"><div class="sub">log dreams to discover recurring themes</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ CHAT PANEL ═══ -->
+  <div class="panel" id="chat-panel">
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input">
+      <input id="chat-input" placeholder="Ask about your sleep, dreams..." autocomplete="off">
+      <button class="send-btn" id="chat-send">Send</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Audio context for notifications ──
+let audioCtx=null;
+function playTone(freq=520,dur=80){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=freq;g.gain.value=.08;o.start();o.stop(audioCtx.currentTime+dur/1000)}catch(e){}}
+
+// ── Stars ──
+(function(){const s=document.getElementById('stars');for(let i=0;i<60;i++){const st=document.createElement('div');st.className='star';st.style.left=Math.random()*100+'%';st.style.top=Math.random()*100+'%';const sz=Math.random()*2+.5;st.style.width=sz+'px';st.style.height=sz+'px';st.style.setProperty('--dur',(Math.random()*4+2)+'s');st.style.animationDelay=Math.random()*4+'s';s.appendChild(st)}})();
+
+// ── State ──
+let token=localStorage.getItem('nl_token')||'';
+let currentMood='neutral';
+let busy=false;
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel+'-panel').classList.add('active');
+    if(tab.dataset.panel==='insights')loadInsights();
+    if(tab.dataset.panel==='dreams')loadDreamPrompts();
+  };
+});
+
+// ── Auth ──
+async function ensureToken(){
+  if(token)return;
+  try{const r=await fetch('/api/auth/token',{method:'POST'});const d=await r.json();token=d.token;localStorage.setItem('nl_token',token)}catch(e){console.error(e)}
+}
+ensureToken();
+
+function authHeaders(){return token?{Authorization:'Bearer '+token}:{}}
+
+// ── Sleep date default ──
+document.getElementById('sleep-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('dream-date').value=new Date().toISOString().split('T')[0];
+
+// ── Quality slider ──
+document.getElementById('sleep-quality').oninput=function(){document.getElementById('quality-label').textContent=this.value+'/5'};
+document.getElementById('dream-lucidity').oninput=function(){document.getElementById('lucidity-label').textContent=this.value};
+
+// ── Mood pills ──
+document.querySelectorAll('.mood-pill').forEach(p=>{
+  p.onclick=()=>{document.querySelectorAll('.mood-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');currentMood=p.dataset.mood}
+});
+
+// ── Log sleep ──
+document.getElementById('log-sleep-btn').onclick=async()=>{
+  await ensureToken();
+  const date=document.getElementById('sleep-date').value;
+  const bedtime=document.getElementById('sleep-bed').value;
+  const wakeTime=document.getElementById('sleep-wake').value;
+  const quality=parseInt(document.getElementById('sleep-quality').value);
+  const notes=document.getElementById('sleep-notes').value;
+  if(!bedtime||!wakeTime)return;
+  try{
+    const r=await fetch('/api/sleep/log',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({date,bedtime,wakeTime,quality,notes})});
+    const d=await r.json();
+    if(d.ok){playTone(660,60);document.getElementById('sleep-notes').value='';loadSleepHistory()}
+    else{alert(d.error||'Failed to log sleep')}
+  }catch(e){alert('Network error')}
+};
+
+// ── Load sleep history ──
+async function loadSleepHistory(){
+  // We fetch insights to get sleep data, then display recent entries
+  await ensureToken();
+  try{
+    const r=await fetch('/api/insights',{headers:authHeaders()});
+    const d=await r.json();
+    if(d.sleep?.score!==null&&d.sleep?.score!==undefined)updateScore(d.sleep.score);
+    // Fetch recent sleeps from the last 7 entries via insights patterns
+    // We'll also fetch individual dates for the list
+  }catch(e){}
+  // Load last 7 entries by querying recent dates
+  const entries=document.getElementById('sleep-entries');
+  entries.innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px">Loading...</div>';
+  const promises=[];
+  const today=new Date();
+  for(let i=0;i<7;i++){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    promises.push(fetch(`/api/sleep/${ds}`,{headers:authHeaders()}).then(r=>r.ok?r.json():null).catch(()=>null));
+  }
+  const results=await Promise.all(promises);
+  const valid=results.filter(Boolean);
+  entries.innerHTML='';
+  if(valid.length===0){entries.innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px">No sleep data yet. Log your first night above.</div>';return}
+  for(const e of valid){
+    const [bh,bm]=e.bedtime.split(':').map(Number);const [wh,wm]=e.wakeTime.split(':').map(Number);
+    let dur=(wh*60+wm)-(bh*60+bm);if(dur<0)dur+=1440;
+    const h=Math.floor(dur/60),m=dur%60;
+    const div=document.createElement('div');div.className='sleep-entry';
+    div.innerHTML=`<div class="quality-dot q${e.quality}"></div><div class="date">${e.date}</div><div class="time">${e.bedtime} → ${e.wakeTime}</div><div class="dur">${h}h ${m}m</div>`;
+    entries.appendChild(div);
+  }
+  // Update score ring
+  if(valid.length>0)updateScoreFromLogs(valid);
+}
+
+function updateScore(score){
+  const arc=document.getElementById('score-arc');
+  const val=document.getElementById('score-val');
+  const circumference=213.6;
+  const offset=circumference-(score/100)*circumference;
+  arc.style.strokeDashoffset=offset;
+  arc.style.transition='stroke-dashoffset .8s ease';
+  val.textContent=score;
+  // Color based on score
+  const color=score>=70?'var(--accent)':score>=50?'var(--gold)':'var(--rose)';
+  arc.style.stroke=color;
+}
+
+function updateScoreFromLogs(logs){
+  // Simple client-side score approximation
+  if(logs.length===0)return;
+  const l=logs[0];
+  const [bh,bm]=l.bedtime.split(':').map(Number);const [wh,wm]=l.wakeTime.split(':').map(Number);
+  let dur=(wh*60+wm)-(bh*60+bm);if(dur<0)dur+=1440;
+  const durScore=Math.min(40,dur>=420?40:dur>=360?30:dur>=300?20:Math.round(dur/15));
+  const qualScore=l.quality*4;
+  const score=Math.min(100,durScore+qualScore+15);
+  updateScore(score);
+}
+
+// ── Save dream ──
+document.getElementById('save-dream-btn').onclick=async()=>{
+  await ensureToken();
+  const content=document.getElementById('dream-content').value.trim();
+  if(!content)return;
+  const date=document.getElementById('dream-date').value;
+  const tags=document.getElementById('dream-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const lucidity=parseInt(document.getElementById('dream-lucidity').value);
+  try{
+    const r=await fetch('/api/dreams',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({date,content,tags,mood:currentMood,lucidity})});
+    const d=await r.json();
+    if(d.ok){playTone(880,50);document.getElementById('dream-content').value='';document.getElementById('dream-tags').value='';loadDreams()}
+    else alert(d.error||'Failed to save dream');
+  }catch(e){alert('Network error')}
+};
+
+// ── Load dreams ──
+async function loadDreams(){
+  await ensureToken();
+  const list=document.getElementById('dream-list');
+  list.innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px">Loading...</div>';
+  try{
+    const r=await fetch('/api/dreams?limit=20',{headers:authHeaders()});
+    const d=await r.json();
+    list.innerHTML='';
+    if(!d.dreams||d.dreams.length===0){list.innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px">No dreams yet. Write your first dream above.</div>';return}
+    for(const dream of d.dreams.reverse()){
+      const card=document.createElement('div');card.className='dream-card';
+      const tagsHtml=dream.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('');
+      card.innerHTML=`<div class="meta"><span>${dream.date}</span><span style="color:var(--gold)">${dream.mood}</span>${dream.lucidity>0?`<span style="color:var(--teal)">lucid ${dream.lucidity}/5</span>`:''}</div><div class="content">${esc(dream.content)}</div>${tagsHtml?`<div class="tags">${tagsHtml}</div>`:''}`;
+      list.appendChild(card);
+    }
+  }catch(e){list.innerHTML='<div style="color:var(--rose);font-size:11px">Error loading dreams</div>'}
+}
+
+// ── Dream prompts ──
+async function loadDreamPrompts(){
+  await ensureToken();
+  try{
+    const r=await fetch('/api/insights',{headers:authHeaders()});
+    const d=await r.json();
+    const prompts=d.dreams?.journalPrompts||[];
+    const box=document.getElementById('prompts-list');
+    box.innerHTML='';
+    if(prompts.length===0){document.getElementById('dream-prompts-box').classList.add('hidden');return}
+    document.getElementById('dream-prompts-box').classList.remove('hidden');
+    for(const p of prompts){
+      const div=document.createElement('div');div.className='prompt';div.textContent=p.prompt;
+      div.onclick=()=>{document.getElementById('dream-content').value=p.prompt+'\n\n';document.getElementById('dream-content').focus()};
+      box.appendChild(div);
+    }
+  }catch(e){}
+}
+
+// ── Insights ──
+async function loadInsights(){
+  await ensureToken();
+  try{
+    const r=await fetch('/api/insights',{headers:authHeaders()});
+    const d=await r.json();
+    const s=d.sleep||{};
+    const dr=d.dreams||{};
+
+    // Score
+    if(s.score!=null){
+      document.querySelector('#ins-score .big').textContent=s.score+'/100';
+      document.querySelector('#ins-score .sub').textContent=s.scoreLabel||'';
+    }
+    // Debt
+    if(s.debt){
+      const dm=s.debt.minutes;const h=Math.floor(Math.abs(dm)/60),m=Math.abs(dm)%60;
+      document.querySelector('#ins-debt .big').textContent=(dm>0?'+':'')+`${h}h ${m}m`;
+      document.querySelector('#ins-debt .sub').textContent=s.debt.label;
+    }
+    // Chronotype
+    if(s.chronotype){
+      document.querySelector('#ins-chrono .big').textContent=s.chronotype.split(' ')[0];
+      document.querySelector('#ins-chrono .sub').textContent=s.chronotype;
+    }
+    // Bedtimes
+    if(s.bedtimeSuggestions?.length){
+      const tbl=document.getElementById('bedtime-table');
+      tbl.innerHTML=s.bedtimeSuggestions.map(b=>`<tr><td>${b.cycles} cycles (${b.duration})</td><td style="color:var(--accent);font-weight:600">${b.bedtime}</td></tr>`).join('');
+    }
+    // Patterns
+    if(s.patterns?.length){
+      document.getElementById('patterns-list').innerHTML=s.patterns.map(p=>`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><span class="pattern-tag ${p.impact}">${p.name}</span><div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(p.description)}</div></div>`).join('');
+    }
+    // Recommendations
+    if(s.recommendations?.length){
+      document.getElementById('recs-list').innerHTML=s.recommendations.map(r=>`<div class="rec-item">${esc(r)}</div>`).join('');
+    }
+    // Dream themes
+    if(dr.themes?.length){
+      document.getElementById('themes-list').innerHTML=dr.themes.map(t=>`<div style="padding:4px 0;font-size:12px"><span style="color:var(--gold)">${esc(t.theme)}</span> <span style="color:var(--muted)">×${t.count}</span></div>`).join('');
+    }
+    // Quality chart
+    if(s.patterns||s.score!=null){
+      // Fetch last 7 days for chart
+      const chart=document.getElementById('quality-chart');
+      const bars=[];
+      const today=new Date();
+      for(let i=6;i>=0;i--){
+        const dd=new Date(today);dd.setDate(dd.getDate()-i);
+        const ds=dd.toISOString().split('T')[0];
+        const r2=await fetch(`/api/sleep/${ds}`,{headers:authHeaders()}).catch(()=>null);
+        const d2=r2&&r2.ok?await r2.json():null;
+        bars.push(d2?d2.quality:0);
+      }
+      chart.innerHTML='';
+      const max=5;
+      bars.forEach((v,i)=>{
+        const bar=document.createElement('div');bar.className='chart-bar';
+        const h=v>0?(v/max)*100:4;
+        bar.style.height=h+'%';
+        bar.style.background=v>=4?'var(--accent)':v>=3?'var(--teal)':v>=2?'var(--gold)':'var(--rose)';
+        bar.style.opacity=v>0?1:.2;
+        chart.appendChild(bar);
+      });
+    }
+  }catch(e){console.error(e)}
+}
+
+// ── Chat ──
+const chatMsgs=document.getElementById('chat-messages');
+const chatInput=document.getElementById('chat-input');
+const chatSend=document.getElementById('chat-send');
+
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+
+function addChatMsg(role,text){
+  const d=document.createElement('div');d.className='msg '+role;
+  d.innerHTML=`<div class="role">${role}</div><div class="bubble">${esc(text)}</div>`;
+  chatMsgs.appendChild(d);chatMsgs.scrollTop=chatMsgs.scrollHeight;return d;
+}
+
+function showTyping(){
+  const d=document.createElement('div');d.className='msg assistant';d.id='typing-msg';
+  d.innerHTML='<div class="role">nightlog</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  chatMsgs.appendChild(d);chatMsgs.scrollTop=chatMsgs.scrollHeight;
+}
+
+function removeTyping(){const t=document.getElementById('typing-msg');if(t)t.remove()}
+
+async function sendChat(){
+  const text=chatInput.value.trim();
+  if(!text||busy)return;
+  chatInput.value='';busy=true;chatSend.disabled=true;
+  addChatMsg('user',text);
+  showTyping();
+  try{
+    await ensureToken();
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({message:text})});
+    removeTyping();
+    if(!res.ok){addChatMsg('assistant','Error: '+res.status);busy=false;chatSend.disabled=false;return}
+    const reader=res.body.getReader();const dec=new TextDecoder();
+    let full='',msgDiv=null;
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      const chunk=dec.decode(value,{stream:true});
+      for(const line of chunk.split('\n')){
+        if(!line.startsWith('data: '))continue;
+        const p=line.slice(6).trim();
+        if(p==='[DONE]')break;
+        try{
+          const d=JSON.parse(p);
+          if(d.content){full+=d.content;if(!msgDiv)msgDiv=addChatMsg('assistant','');msgDiv.querySelector('.bubble').textContent=full;chatMsgs.scrollTop=chatMsgs.scrollHeight}
+          if(d.error){addChatMsg('assistant','Error: '+d.error);break}
+        }catch{}
+      }
+    }
+    if(full)playTone(440,40);
+    if(!full&&!msgDiv)addChatMsg('assistant','(no response)');
+  }catch(e){removeTyping();addChatMsg('assistant','Error: '+e.message)}
+  busy=false;chatSend.disabled=false;chatInput.focus();
+}
+
+chatSend.onclick=sendChat;
+chatInput.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}};
+
+// ── Initial load ──
+loadSleepHistory();
+loadDreams();
+</script>
+</body>
+</html>
