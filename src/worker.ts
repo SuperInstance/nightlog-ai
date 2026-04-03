@@ -473,6 +473,10 @@ async function getLandingHTML(): Promise<string> {
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    const url = new URL(req.url);
+    const path = url.pathname;
+    const method = req.method;
+
     // ── Knowledge Graph (Phase 4B) ──
     if (path.startsWith('/api/kg')) {
       const _kj = (d: any, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
@@ -485,11 +489,8 @@ export default {
       if (path === '/api/kg/cross' && method === 'GET') return _kj({ query: url.searchParams.get('query') || '', domain: url.searchParams.get('domain') || 'nightlog-ai', results: await crossDomainQuery(env, url.searchParams.get('query') || '', url.searchParams.get('domain') || 'nightlog-ai') });
       if (path === '/api/kg/domains' && method === 'GET') return _kj(await domainStats(env));
       if (path === '/api/kg/sync' && method === 'POST') return _kj(await loadAllSeeds(env, FLEET_REPOS));
-      if (path === '/api/kg/seed' && method === 'POST') { const b = await request.json(); return _kj(await loadSeedIntoKG(env, b, b.domain || 'nightlog-ai')); }
+      if (path === '/api/kg/seed' && method === 'POST') { const b = await req.json(); return _kj(await loadSeedIntoKG(env, b, b.domain || 'nightlog-ai')); }
     }
-
-    const url = new URL(req.url);
-    const path = url.pathname;
 
     // CORS preflight
     if (req.method === 'OPTIONS') {
