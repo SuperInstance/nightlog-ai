@@ -540,6 +540,8 @@ export default {
 
     // GET /api/insights
     if (req.method === 'GET' && path === '/api/insights') {
+
+  if (path === '/api/efficiency' && request.method === 'GET') {    return new Response(JSON.stringify({ totalCached: 0, totalHits: 0, cacheHitRate: 0, tokensSaved: 0, repo: 'nightlog-ai', timestamp: Date.now() }), { headers: { 'Content-Type': 'application/json', ...corsHeaders() } });  }
       return handleInsights(req, env);
     }
 
