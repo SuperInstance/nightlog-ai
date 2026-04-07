@@ -1,59 +1,33 @@
-# Nightlog
+# Nightlog AI
 
-> Live instance: https://nightlog-ai.casey-digennaro.workers.dev
+You keep a sleep and dream journal. This tool lets you query your own entries to find patterns. Your data does not leave your Cloudflare account. There are no subscriptions or tracking.
 
-A privacy-first sleep and dream journal agent for the Cocapn Fleet. Your entries stay on your infrastructure.
+Live demo: https://nightlog-ai.casey-digennaro.workers.dev
 
-This is open source MIT software deployed to Cloudflare Workers. It operates on a fork-first ownership model—you control your copy.
+## Why This Exists
+Most sleep apps monetize your data or place features behind paywalls. This tool runs on infrastructure you control, so you don't have to trust a third party with private journal entries.
 
----
-
-## Why this exists
-Many mainstream sleep and wellness apps monetize personal data. Nightlog was built as an alternative that doesn't.
-
-## How it's different
-This is an agent, not a service.
-- No central server. You fork and deploy your own instance.
-- All data is written to your private Cloudflare KV storage.
-- Code is auditable and contains no telemetry.
-- No accounts, terms of service, or subscription changes.
-
----
-
-## How it works
-A static web interface pairs with a Cloudflare Worker agent. Data is stored in your KV namespace. AI insights use an API key you provide—requests are never proxied or logged.
-
-No analytics. No error reporting. Data only leaves your instance when you export it.
-
-> **Note:** AI features require your own LLM API key (DeepSeek, OpenAI, Anthropic, or compatible).
-
----
+## Quick Start
+1.  **Fork** this repository to create your own private instance.
+2.  Deploy it to Cloudflare Workers using `npm run deploy`.
+3.  Add your own LLM API key to enable AI-powered queries. That's all.
 
 ## Features
-*   **Sleep tracking:** Log times, quality, and notes. View calculated sleep debt and patterns.
-*   **Dream journal:** Record entries with tags and mood. Full text search runs locally in your browser.
-*   **Conversational agent:** Ask questions about your sleep history. Responses reference only your entries.
-*   **Data control:** Export all entries as JSON. Delete everything with one click.
-*   **No lock-in:** Move your deployment or stop using it at any time.
+*   **Personalized Sleep Analysis**: Sleep debt is calculated against your own historical baseline.
+*   **Local Dream Search**: Filter and search your dream logs directly in your browser; no data is sent for basic searches.
+*   **Conversational Queries**: Ask questions like "When did I sleep the most last month?" using a streaming AI agent (requires your API key).
+*   **Private Data Storage**: All entries are stored in your Cloudflare KV namespace.
+*   **Full Data Control**: Export all your data or delete it permanently with one click.
+*   **Guest Demo**: Try up to 5 queries in the live demo without any setup.
+*   **Dark Interface**: A dim theme for logging entries at night.
 
----
+## Limitations
+The conversational AI agent is configured to process a maximum of 30 days of log entries per query to ensure consistent response times and manage context limits.
 
-## Quick start
-1.  Fork this repository to your GitHub account.
-2.  Clone your fork locally.
-3.  Install [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/).
-4.  Run `wrangler login` to authenticate with Cloudflare.
-5.  Run `npm run setup` to create a KV namespace and set your API key.
-6.  Deploy with `npm run deploy`.
+## Architecture
+This is a single Cloudflare Worker. It serves the frontend, handles API logic, and stores data in your KV namespace. When you use the AI feature, it communicates directly with your configured LLM provider (e.g., OpenAI); there are no intermediate proxies or servers.
 
-Your agent will be live on your `*.workers.dev` subdomain. Host the frontend from `/web` on any static host if desired.
+## License
+MIT License. Use, modify, and distribute freely.
 
-> **Limitation:** Requires comfort with developer tools and a Cloudflare account. AI features depend on your chosen provider's availability and costs.
-
----
-
-<div>
-  Part of the <a href="https://the-fleet.casey-digennaro.workers.dev">Cocapn Fleet</a> · 
-  <a href="https://cocapn.ai">Cocapn</a> · 
-  Attribution: Superinstance & Lucineer (DiGennaro et al.)
-</div>
+<div style="text-align:center;padding:16px;color:#64748b;font-size:.8rem"><a href="https://the-fleet.casey-digennaro.workers.dev" style="color:#64748b">The Fleet</a> &middot; <a href="https://cocapn.ai" style="color:#64748b">Cocapn</a></div>
